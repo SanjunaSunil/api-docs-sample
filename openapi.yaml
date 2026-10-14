@@ -1,0 +1,477 @@
+openapi: 3.0.3
+info:
+  title: Taskly API
+  description: |
+    The Taskly API lets you create, read, update, and delete tasks and users programmatically.
+
+    ## Authentication
+
+    All requests require an API key passed in the `Authorization` header:
+
+    ```
+    Authorization: Bearer YOUR_API_KEY
+    ```
+
+    ## Base URL
+
+    ```
+    https://api.taskly.io/v1
+    ```
+
+    ## Rate limits
+
+    | Plan       | Requests per minute |
+    |------------|---------------------|
+    | Free       | 60                  |
+    | Pro        | 300                 |
+    | Enterprise | Unlimited           |
+  version: 1.2.0
+  contact:
+    name: Taskly Developer Support
+    email: api-support@taskly.io
+
+servers:
+  - url: https://api.taskly.io/v1
+    description: Production
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Tasks
+    description: Create and manage tasks
+  - name: Users
+    description: Retrieve user profiles
+
+paths:
+
+  /tasks:
+    get:
+      summary: List tasks
+      description: Returns a paginated list of tasks. Use query parameters to filter results.
+      operationId: listTasks
+      tags: [Tasks]
+      parameters:
+        - name: status
+          in: query
+          description: Filter tasks by status
+          schema:
+            type: string
+            enum: [todo, in_progress, done]
+        - name: priority
+          in: query
+          description: Filter tasks by priority
+          schema:
+            type: string
+            enum: [low, medium, high]
+        - name: assignee_id
+          in: query
+          description: Filter tasks by assignee user ID
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: Number of results per page (max 100)
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: A paginated list of tasks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: Create a task
+      description: Creates a new task in the workspace.
+      operationId: createTask
+      tags: [Tasks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /tasks/{task_id}:
+    parameters:
+      - name: task_id
+        in: path
+        required: true
+        description: The unique identifier of the task
+        schema:
+          type: string
+          example: task_01j8k2m
+
+    get:
+      summary: Get a task
+      description: Retrieves a single task by its ID.
+      operationId: getTask
+      tags: [Tasks]
+      responses:
+        '200':
+          description: Task found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: Update a task
+      description: Updates one or more fields on an existing task. Only fields included in the request body are changed.
+      operationId: updateTask
+      tags: [Tasks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete a task
+      description: Permanently deletes a task. This action cannot be undone.
+      operationId: deleteTask
+      tags: [Tasks]
+      responses:
+        '204':
+          description: Task deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users:
+    get:
+      summary: List users
+      description: Returns a paginated list of users in the workspace.
+      operationId: listUsers
+      tags: [Users]
+      parameters:
+        - name: role
+          in: query
+          description: Filter users by role
+          schema:
+            type: string
+            enum: [admin, member]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: A paginated list of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/{user_id}:
+    get:
+      summary: Get a user
+      description: Retrieves a single user by their ID.
+      operationId: getUser
+      tags: [Users]
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: The unique identifier of the user
+          schema:
+            type: string
+            example: user_7xp9q
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: API key authentication. Use your live key (`tsk_live_`) for production and test key (`tsk_test_`) for development.
+
+  schemas:
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          example: task_01j8k2m
+        title:
+          type: string
+          maxLength: 255
+          example: Write API documentation
+        description:
+          type: string
+          nullable: true
+          example: Create OpenAPI spec and Markdown reference docs.
+        status:
+          type: string
+          enum: [todo, in_progress, done]
+          example: in_progress
+        priority:
+          type: string
+          enum: [low, medium, high]
+          example: high
+        due_date:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-10-20"
+        assignee_id:
+          type: string
+          nullable: true
+          example: user_7xp9q
+        tags:
+          type: array
+          items:
+            type: string
+          example: [docs, api]
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-10-10T08:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-10-13T14:20:00Z"
+
+    TaskCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          maxLength: 255
+          example: Review pull request
+        description:
+          type: string
+          example: Check the docs branch before merging.
+        priority:
+          type: string
+          enum: [low, medium, high]
+          default: medium
+        due_date:
+          type: string
+          format: date
+          example: "2026-10-22"
+        assignee_id:
+          type: string
+          example: user_7xp9q
+        tags:
+          type: array
+          items:
+            type: string
+
+    TaskUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        status:
+          type: string
+          enum: [todo, in_progress, done]
+        priority:
+          type: string
+          enum: [low, medium, high]
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        assignee_id:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: user_7xp9q
+        name:
+          type: string
+          example: Sanjuna Sunil
+        email:
+          type: string
+          format: email
+          example: sanjuna@example.com
+        role:
+          type: string
+          enum: [admin, member]
+          example: member
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-09-01T09:00:00Z"
+
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 42
+        page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 20
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: task_not_found
+            message:
+              type: string
+              example: No task exists with the ID 'task_99xyz'.
+            status:
+              type: integer
+              example: 404
+
+  responses:
+    Unauthorized:
+      description: Authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: invalid_api_key
+              message: The API key is missing or invalid.
+              status: 401
+
+    BadRequest:
+      description: The request was malformed or missing required fields
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: validation_error
+              message: "The 'title' field is required."
+              status: 400
+
+    NotFound:
+      description: The requested resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: task_not_found
+              message: No task exists with the ID 'task_99xyz'.
+              status: 404
+
+    UnprocessableEntity:
+      description: The request body failed validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: invalid_field_value
+              message: "The 'priority' field must be one of: low, medium, high."
+              status: 422
